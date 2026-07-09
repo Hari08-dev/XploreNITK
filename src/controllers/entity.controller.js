@@ -1,13 +1,8 @@
 const entityModel = require('../models/entity.model');
-const jwt = require('jsonwebtoken');
 
 
 const getAllEntities = async (req, res) => {
     try {
-        const token = req.cookies.token;
-        if (!token) {
-            return res.status(401).json({ message: "login first nigga" });
-        };
         const entities = await entityModel.find();
         res.status(200).json(entities);
     } catch (error) {
@@ -15,12 +10,8 @@ const getAllEntities = async (req, res) => {
     }
 };
 
-const getEntityById = async (req, res) => {
+const getEntity = async (req, res) => {
     try {
-        const token = req.cookies.token;
-        if (!token) {
-            return res.status(401).json({ message: "login first nigga" });
-        }
         const search = req.query.search;
         const entity = await entityModel.find({
             $or: [
@@ -41,12 +32,8 @@ const getEntityById = async (req, res) => {
 
 const createEntity = async (req, res) => {
     try {
-        const decode = jwt.verify(req.cookies.token, process.env.JWT_SECRET);
-        if (decode.role !== "admin") {
-            return res.status(401).json({ message: "nigga spotted" });
-        }
-        const { name, description, status } = req.body;
-        const entity = new entityModel({ name, description, status });
+        const { name, description, status, image, location } = req.body;
+        const entity = new entityModel({ name, description, status, image, location });
         await entity.save();
         res.status(201).json({ message: "Entity created successfully" });
     } catch (error) {
@@ -56,13 +43,9 @@ const createEntity = async (req, res) => {
 
 const updateEntity = async (req, res) => {
     try {
-        const decode = jwt.verify(req.cookies.token, process.env.JWT_SECRET);
-        if (decode.role !== "admin") {
-            return res.status(401).json({ message: "nigga spotted" });
-        }
         const { id } = req.params;
-        const { name, description, status } = req.body;
-        const entity = await entityModel.findByIdAndUpdate(id, { name, description, status }, { new: true });
+        const { name, description, status, image } = req.body;
+        const entity = await entityModel.findByIdAndUpdate(id, { name, description, status, image }, { new: true });
         if (!entity) {
             return res.status(404).json({ message: "Entity not found" });
         }
@@ -74,10 +57,6 @@ const updateEntity = async (req, res) => {
 
 const deleteEntity = async (req, res) => {
     try {
-        const decode = jwt.verify(req.cookies.token, process.env.JWT_SECRET);
-        if (decode.role !== "admin") {
-            return res.status(401).json({ message: "nigga spotted" });
-        }
         const { id } = req.params;
         const entity = await entityModel.findByIdAndDelete(id);
         if (!entity) {
@@ -89,4 +68,4 @@ const deleteEntity = async (req, res) => {
     }
 };
 
-module.exports = { getAllEntities, getEntityById, createEntity, updateEntity, deleteEntity };
+module.exports = { getAllEntities, getEntity, createEntity, updateEntity, deleteEntity };

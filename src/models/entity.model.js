@@ -2,6 +2,10 @@ const mongoose = require("mongoose");
 
 const entitySchema = new mongoose.Schema({
 
+    image: {
+        type: String
+    },
+
     name: {
         type: String,
         required: true,
@@ -15,9 +19,14 @@ const entitySchema = new mongoose.Schema({
         type: String
     },
 
+    location: {
+        type: String,
+        required: true
+    },
+
     status: {
         type: String,
-        enum: ["open", "closed"],
+        enum: ["open", "closed", "crowded"],
         default: "open",
         required: true
     }

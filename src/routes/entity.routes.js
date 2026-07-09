@@ -1,11 +1,13 @@
 const express = require('express');
-const { getAllEntities, getEntityById, createEntity, updateEntity, deleteEntity } = require('../controllers/entity.controller');
+const { getAllEntities, getEntity, createEntity, updateEntity, deleteEntity } = require('../controllers/entity.controller');
 const router = express.Router();
+const isAuth = require('../middlewares/isAuth');
+const isAdmin = require('../middlewares/isAdmin');
 
-router.get("/", getAllEntities);
-router.get("/search", getEntityById);
-router.post("/", createEntity);
-router.put("/:id", updateEntity);
-router.delete("/:id", deleteEntity);
+router.get("/", isAuth, getAllEntities);
+router.get("/search", isAuth, getEntity);
+router.post("/", isAdmin, createEntity);
+router.put("/:id", isAdmin, updateEntity);
+router.delete("/:id", isAdmin, deleteEntity);
 
 module.exports = router;

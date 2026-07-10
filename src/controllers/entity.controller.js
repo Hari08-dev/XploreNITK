@@ -1,7 +1,7 @@
-const entityModel = require('../models/entity.model');
+import entityModel from '../models/entity.model.js';
 
 
-const getAllEntities = async (req, res) => {
+export const getAllEntities = async (req, res) => {
     try {
         const entities = await entityModel.find();
         res.status(200).json(entities);
@@ -10,7 +10,7 @@ const getAllEntities = async (req, res) => {
     }
 };
 
-const getEntity = async (req, res) => {
+export const getEntity = async (req, res) => {
     try {
         const search = req.query.search;
         const entity = await entityModel.find({
@@ -30,7 +30,7 @@ const getEntity = async (req, res) => {
 };
 
 
-const createEntity = async (req, res) => {
+export const createEntity = async (req, res) => {
     try {
         const { name, description, status, image, location } = req.body;
         const entity = new entityModel({ name, description, status, image, location });
@@ -41,7 +41,7 @@ const createEntity = async (req, res) => {
     }
 };
 
-const updateEntity = async (req, res) => {
+export const updateEntity = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, description, status, image } = req.body;
@@ -55,7 +55,7 @@ const updateEntity = async (req, res) => {
     }
 };
 
-const deleteEntity = async (req, res) => {
+export const deleteEntity = async (req, res) => {
     try {
         const { id } = req.params;
         const entity = await entityModel.findByIdAndDelete(id);
@@ -67,5 +67,3 @@ const deleteEntity = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-module.exports = { getAllEntities, getEntity, createEntity, updateEntity, deleteEntity };

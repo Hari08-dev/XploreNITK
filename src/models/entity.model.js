@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const entitySchema = new mongoose.Schema({
 
@@ -35,4 +35,4 @@ const entitySchema = new mongoose.Schema({
 
 const entityModel = mongoose.model("Entity", entitySchema);
 
-module.exports = entityModel;
+export default entityModel;

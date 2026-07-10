@@ -1,43 +1,30 @@
-const userModel = require("../models/user.model");
-const jwt = require("jsonwebtoken");
+import userModel from "../models/user.model.js";
+import { OAuth2Client } from "google-auth-library";
+import generateToken from "../utils/generateToken.js";
 
-const registerUser = async (req, res) => {
-    try {
-        const { name, email, password, role } = req.body;
-        const existingUser = await userModel.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: "User already exists" });
+export const googleAuth = async(req, res) => {
+    try{
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        const {credential} = req.body;
+        const ticket = await client.verifyIdToken({idToken: credential, audience: process.env.GOOGLE_CLIENT_ID});
+        const payload = ticket.getPayload();
+        if (!payload.email_verified){
+            return res.status(401).json({ message: "Email not verified"});
         }
-        const user = new userModel({ name, email, password, role });
-        await user.save();
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        let user = await userModel.findOne({ email: payload.email });
+        if(!user){
+            user = new userModel({ name: payload.name, email: payload.email, avatar: payload.picture, googleId: payload.sub});
+            await user.save();
+        }
+        const token = generateToken(user._id);
         res.cookie("token", token, { httpOnly: true, maxAge: 3600000 });
-        res.status(201).json({ message: "User registered successfully", user: { id: user._id, name: user.name, email: user.email } });
+        res.status(201).json({ message: "User registered successfully", user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar } });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-};
+}
 
-const loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await userModel.findOne({ email });
-        if (!user) {
-            return res.status(401).json({ message: "User not found" });
-        }
-        const isMatch = user.password === password;
-        if (!isMatch) {
-            return res.status(401).json({ message: "Incorrect Password" });
-        }
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
-        res.cookie("token", token, { httpOnly: true, maxAge: 3600000 });
-        res.status(200).json({ message: "Login successful", user: { id: user._id, name: user.name, email: user.email } });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-const logoutUser = async (req, res) => {
+export const logoutUser = async (req, res) => {
     try {
         const token = req.cookies.token;
         if (!token) {
@@ -50,11 +37,9 @@ const logoutUser = async (req, res) => {
     }
 };
 
-const getCurrentUser = async (req, res) => {
+export const getCurrentUser = async (req, res) => {
     try {
-        const token = req.cookies.token;
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await userModel.findById(decoded.id);
+        const user = await userModel.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -64,7 +49,7 @@ const getCurrentUser = async (req, res) => {
     }
 };
 
-const updateUser = async (req, res) => {
+export const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, email, password, role } = req.body;
@@ -77,5 +62,3 @@ const updateUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-module.exports = { registerUser, loginUser, logoutUser, getCurrentUser, updateUser };

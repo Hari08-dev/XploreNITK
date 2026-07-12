@@ -26,7 +26,7 @@ const entitySchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: ["open", "closed", "crowded"],
+        enum: ["open", "closed"],
         default: "open",
         required: true
     }

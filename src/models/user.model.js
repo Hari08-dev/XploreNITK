@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
 
     googleId: String,
 
+    favorites: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Entity"
+    }],
+
     role: {
         type: String,
         enum: ["user", "admin"],

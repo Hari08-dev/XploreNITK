@@ -2,6 +2,8 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
 import entityRoutes from "./routes/entity.routes.js";
+import favouriteRoutes from './routes/favourite.routes.js'
+import aiRoutes from './routes/ai.routes.js'
 import cors from "cors";
 
 const app = express();
@@ -14,7 +16,7 @@ app.use(cors({
 }));
 app.use("/api/auth", authRoutes);
 app.use("/api/entities", entityRoutes);
-
-
+app.use("/api/fav", favouriteRoutes);
+app.use('/api/ai', aiRoutes);
 
 export default app;

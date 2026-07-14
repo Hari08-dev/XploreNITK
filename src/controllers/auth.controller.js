@@ -13,7 +13,7 @@ export const googleAuth = async(req, res) => {
         }
         let user = await userModel.findOne({ email: payload.email });
         if(!user){
-            user = new userModel({ name: payload.name, email: payload.email, avatar: payload.picture, googleId: payload.sub});
+            user = new userModel({ name: payload.name, email: payload.email, avatar: payload.picture, googleId: payload.sub, role: 'user'});
             await user.save();
         }
         const token = generateToken(user._id);

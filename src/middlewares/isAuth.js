@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import userModel from "../models/user.model.js";
+
 
 export const isAuth = (req, res, next) => {
     const token = req.cookies.token;
@@ -15,17 +17,18 @@ export const isAuth = (req, res, next) => {
     next();
 };
 
-export const isAdmin = (req, res, next) => {
+export const isAdmin = async(req, res, next) => {
     const token = req.cookies.token;
     if (!token) {
         return res.status(401).json({ message: "Unauthorized" });
     }
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== "admin") {
+        const user = await userModel.findById(decode.id);
+        if (user.role !== "admin") {
             return res.status(403).json({ message: "Access denied" });
         }
-        req.user = decoded;
+        req.user = user;
     } catch (error) {
         return res.status(401).json({ message: "Invalid token" });
     }

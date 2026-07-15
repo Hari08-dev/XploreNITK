@@ -24,7 +24,7 @@ export const isAdmin = async(req, res, next) => {
     }
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await userModel.findById(decode.id);
+        const user = await userModel.findById(decoded.id);
         if (user.role !== "admin") {
             return res.status(403).json({ message: "Access denied" });
         }

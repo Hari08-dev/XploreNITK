@@ -4,6 +4,8 @@ import {isAuth} from "../middlewares/isAuth.js";
 
 const router = express.Router();
 
-router.post("/:entityId", isAuth, toggleFavorite);
+router.use(isAuth);
+
+router.post("/:entityId", toggleFavorite);
 
 export default router;

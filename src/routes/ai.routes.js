@@ -4,6 +4,8 @@ import { isAuth } from '../middlewares/isAuth.js';
 
 const router = express.Router();
 
-router.post('/', isAuth, aiSearch);
+router.use(isAuth);
+
+router.post('/', aiSearch);
 
 export default router;

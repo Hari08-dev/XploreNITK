@@ -1,76 +1,84 @@
 import entityModel from "../models/entity.model.js";
 import userModel from "../models/user.model.js";
+import redisClient from "../config/redis.js";
 
-/* ---------------- Dashboard ---------------- */
+
+//Dashboard
 
 export const getDashboard = async (req, res) => {
     try {
+        const cached = await redisClient.get("dashboard");
 
-        const [
-            users,
-            entities,
-            favs,
-            recentEntities
-        ] = await Promise.all([
-            userModel.countDocuments({ role: "user" }),
-            entityModel.countDocuments(),
-            userModel.find().select("favorites"),
-            entityModel.find()
-                .sort({ createdAt: -1 })      // newest first
-                .limit(5)
-                .select("name image category location status createdAt")
-        ]);
+        if (cached) {
+            console.log("Dashboard from Redis");
+            return res.json(JSON.parse(cached));
+        }
 
-        // Total favorites
+        const [ users, entities, favs, recentEntities ] = await Promise.all([
+                                                                    userModel.countDocuments({ role: "user" }),
+                                                                    entityModel.countDocuments(),
+                                                                    userModel.find().select("favorites"),
+                                                                    entityModel.find().sort({ createdAt: -1 }).limit(5).select("name timings")
+                                                                ]);
+
         const favorites = favs.reduce(
-            (sum, user) => sum + (user.favorites?.length || 0),
-            0
+            (sum, user) => sum + (user.favorites?.length || 0), 0
         );
 
-        // Count favorites for each entity
-const favoriteCount = {};
+        const startOfMonth = new Date(
+            new Date().getFullYear(),
+            new Date().getMonth(),
+            1
+        );
 
-favs.forEach(user => {
-    user.favorites.forEach(id => {
-        const key = id.toString();
-        favoriteCount[key] = (favoriteCount[key] || 0) + 1;
-    });
-});
-
-// Find the entity with the highest favorites
-        let topEntityId = null;
-        let maxFavorites = 0;
-
-        for (const [entityId, count] of Object.entries(favoriteCount)) {
-            if (count > maxFavorites) {
-                maxFavorites = count;
-                topEntityId = entityId;
-            }
-        }
-
-        // Fetch that entity
-        let topTrendingPlace = null;
-
-        if (topEntityId) {
-            topTrendingPlace = await entityModel.findById(topEntityId).select(
-                "name image"
-            );
-
-            topTrendingPlace = {
-                ...topTrendingPlace.toObject(),
-                favoriteCount: maxFavorites,
-            };
-        }
-
-        return res.status(200).json({
-            stats: {
-                users: users,
-                entities: entities,
-                favorites: favorites
+        const usersThisMonth = await userModel.countDocuments({
+            createdAt: {
+                $gte: startOfMonth
             },
-            recentEntities,
-            topTrendingPlace
+            role: "user"
         });
+
+        const favoriteCount = {};
+
+        favs.forEach(user => {
+            user.favorites.forEach(id => {
+                const key = id.toString();
+                favoriteCount[key] = (favoriteCount[key] || 0) + 1;
+            });
+        });
+
+        const topFiveIds = Object.entries(favoriteCount).sort(([, a], [, b]) => b - a).slice(0, 5);
+
+        const topTrendingPlaces = await Promise.all(
+            topFiveIds.map(async ([entityId, count]) => {
+                const entity = await entityModel.findById(entityId).select("name");
+
+                return entity ? { name: entity.name, favoriteCount: count } : null;
+            })
+        );
+
+        const filteredTrendingPlaces = topTrendingPlaces.filter(Boolean);
+
+        const response = {
+                            stats: {
+                                users,
+                                entities,
+                                favorites,
+                                usersThisMonth
+                            },
+                            recentEntities,
+                            topTrendingPlaces : filteredTrendingPlaces
+                        }
+
+        await redisClient.set(
+            "dashboard",
+            JSON.stringify(response),
+            {
+                EX: 300
+            }
+        );
+
+        res.json(response);
 
     } catch (err) {
         console.error(err);
@@ -81,13 +89,13 @@ favs.forEach(user => {
     }
 };
 
-/* ---------------- Entities ---------------- */
+//Entities
 
-export const getAllEntitiesAdmin = async (req, res) => {
+export const getAllEntities = async (req, res) => {
 
     try {
 
-        const entities = await entityModel.find().sort({ _id: -1 });
+        const entities = await entityModel.find();
 
         res.status(200).json({
             entities
@@ -103,11 +111,12 @@ export const getAllEntitiesAdmin = async (req, res) => {
 
 };
 
-export const createEntityAdmin = async (req, res) => {
+export const createEntity = async (req, res) => {
 
     try {
-
         const entity = await entityModel.create(req.body);
+        await redisClient.del("entities");
+        await redisClient.del("dashboard");
 
         res.status(201).json({
             message: "Entity created",
@@ -124,31 +133,22 @@ export const createEntityAdmin = async (req, res) => {
 
 };
 
-export const updateEntityAdmin = async (req, res) => {
+export const updateEntity = async (req, res) => {
 
     try {
 
-        const entity = await entityModel.findByIdAndUpdate(
-
-            req.params.id,
-
-            req.body,
-
-            {
-                new: true
-            }
-
-        );
+        const entity = await entityModel.findByIdAndUpdate( req.params.id, req.body, { new: true } );
 
         if (!entity) {
-
             return res.status(404).json({
 
                 message: "Entity not found"
 
             });
-
         }
+
+        await redisClient.del("entities");
+        await redisClient.del("dashboard");
 
         res.status(200).json({
 
@@ -170,11 +170,16 @@ export const updateEntityAdmin = async (req, res) => {
 
 };
 
-export const deleteEntityAdmin = async (req, res) => {
+export const deleteEntity = async (req, res) => {
 
     try {
-
+        
         await entityModel.findByIdAndDelete(req.params.id);
+
+        await userModel.updateMany( {}, { $pull: { favorites: req.params.id } } );
+
+        await redisClient.del("entities");
+        await redisClient.del("dashboard");
 
         res.status(200).json({
 
@@ -194,16 +199,13 @@ export const deleteEntityAdmin = async (req, res) => {
 
 };
 
-/* ---------------- Users ---------------- */
+//Users
 
 export const getUsers = async (req, res) => {
 
     try {
 
-        const users = await userModel
-            .find()
-            .select("-googleID")
-            .sort({ createdAt: -1 });
+        const users = await userModel.find().select("-googleID").sort({ createdAt: -1 });
 
         res.status(200).json({
 
@@ -227,19 +229,7 @@ export const updateUserRole = async (req, res) => {
 
     try {
 
-        const user = await userModel.findByIdAndUpdate(
-
-            req.params.id,
-
-            {
-                role: req.body.role
-            },
-
-            {
-                new: true
-            }
-
-        );
+        const user = await userModel.findByIdAndUpdate( req.params.id, { role: req.body.role }, { new: true } );
 
         if (!user) {
 

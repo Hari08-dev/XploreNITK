@@ -20,18 +20,30 @@ const entitySchema = new mongoose.Schema({
     },
 
     location: {
-        type: String,
-        required: true
+        type: String
     },
 
-    status: {
-        type: String,
-        enum: ["open", "closed"],
-        default: "open",
-        required: true
-    }
+    coordinates: {
+        lat: {
+            type: Number,
+            required: true,
+        },
+        lng: {
+            type: Number,
+            required: true,
+        }
+    },
 
-});
+    timings: [
+        {
+            day: String,
+            open: String,
+            close: String,
+            closed: Boolean
+        }
+    ]
+
+}, {timestamps: true});
 
 const entityModel = mongoose.model("Entity", entitySchema);
 

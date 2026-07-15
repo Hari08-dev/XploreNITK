@@ -1,42 +1,26 @@
 import express from "express";
-
-import {
-
-    getDashboard,
-
-    getAllEntitiesAdmin,
-
-    createEntityAdmin,
-
-    updateEntityAdmin,
-
-    deleteEntityAdmin,
-
-    getUsers,
-
-    updateUserRole,
-
-    deleteUser
-
-} from "../controllers/admin.controller.js";
+import { getDashboard, getAllEntities, createEntity, updateEntity, deleteEntity, getUsers, updateUserRole, deleteUser } from "../controllers/admin.controller.js";
+import { isAdmin } from "../middlewares/isAuth.js";
 
 const router = express.Router();
 
-/* Dashboard */
+router.use(isAdmin);
+
+//Dashboard
 
 router.get("/dashboard", getDashboard);
 
-/* Entities */
+//entities
 
-router.get("/entities", getAllEntitiesAdmin);
+router.get("/entities", getAllEntities);
 
-router.post("/entities", createEntityAdmin);
+router.post("/entities", createEntity);
 
-router.put("/entities/:id", updateEntityAdmin);
+router.put("/entities/:id", updateEntity);
 
-router.delete("/entities/:id", deleteEntityAdmin);
+router.delete("/entities/:id", deleteEntity);
 
-/* Users */
+//users
 
 router.get("/users", getUsers);
 
